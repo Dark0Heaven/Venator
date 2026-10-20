@@ -26,10 +26,10 @@ window.VENATOR_CONFIG = {
     key: "sb_publishable_VnFFSdtmLCqnuyRc7thAGg_AzOAxWkB"
   },
 
-  // Die Besatzung. Platzhalter, bitte durch eure Namen ersetzen.
+  // Die Besatzung. name erscheint im Werft-Log, rolle darunter in der Besatzungsliste.
   spieler: [
-    { name: "Spieler 1", rolle: "Baumeister:in" },
-    { name: "Spieler 2", rolle: "Baumeister:in" }
+    { name: "Ilias", rolle: "aka FlamedHeaven" },
+    { name: "Joost", rolle: "aka Rosadotterblume" }
   ],
 
   // Der Eröffnungstext oben auf der Seite.
