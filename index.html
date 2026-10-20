@@ -166,16 +166,11 @@
             <label for="f-spieler">Wer schreibt?</label>
             <select id="f-spieler"></select>
           </div>
-          <div class="feld">
-            <label for="f-prozent">Gesamtfortschritt in Prozent</label>
-            <input id="f-prozent" type="number" min="0" max="100" step="1" inputmode="numeric">
-            <small>Optional. Der neueste Wert steht in der Leiste unten.</small>
-          </div>
         </div>
         <div class="feld">
           <label for="f-notiz">Was ist passiert?</label>
           <textarea id="f-notiz" maxlength="280"></textarea>
-          <small>Optional, bis 280 Zeichen.</small>
+          <small>Bis 280 Zeichen. Den Baufortschritt ändert ihr bei den Meilensteinen.</small>
         </div>
         <div class="feld">
           <label for="f-pin">Passwort der Besatzung</label>
@@ -193,8 +188,30 @@
 
   <section class="abschnitt" id="meilensteine" aria-labelledby="h-meilensteine">
     <h2 id="h-meilensteine" tabindex="-1">Meilensteine</h2>
-    <p class="hinweis">Klick auf eine Klinge, um den Meilenstein zu zünden.</p>
+    <p class="hinweis" id="ms-hinweis">Klick auf eine Klinge, um den Meilenstein zu zünden.</p>
+    <p class="ms-zaehler" id="ms-zaehler" role="status"></p>
     <div class="klingen" id="adv-liste"></div>
+
+    <dialog class="ms-dialog" id="ms-dialog" aria-labelledby="ms-titel">
+      <form class="log-form" id="ms-form" autocomplete="off">
+        <h3 id="ms-titel"></h3>
+        <p id="ms-text"></p>
+        <div class="feld">
+          <label for="ms-spieler">Wer macht das?</label>
+          <select id="ms-spieler"></select>
+        </div>
+        <div class="feld">
+          <label for="ms-pin">Passwort der Besatzung</label>
+          <input id="ms-pin" type="password" autocomplete="off">
+        </div>
+        <label class="merken"><input type="checkbox" id="ms-merken"> Passwort auf diesem Gerät merken</label>
+        <p class="log-meldung" id="ms-meldung" role="status"></p>
+        <div class="ti-knoepfe">
+          <button class="knopf knopf-rot" id="ms-ok" type="submit">Bestätigen</button>
+          <button class="knopf" id="ms-abbruch" type="button">Abbrechen</button>
+        </div>
+      </form>
+    </dialog>
   </section>
 
   <section class="abschnitt" id="besatzung" aria-labelledby="h-besatzung">

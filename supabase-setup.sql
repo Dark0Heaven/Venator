@@ -4,8 +4,9 @@
 -- VORHER unten 'HIER-DEIN-PASSWORT' durch euer gemeinsames Passwort ersetzen
 -- (mindestens 8 Zeichen, ihr beide braucht es später beim Eintragen).
 --
--- Wer die Seite öffnet, darf lesen. Schreiben geht nur über die Funktion
--- eintrag_hinzufuegen, und die prüft das Passwort auf dem Server.
+-- Wer die Seite öffnet, darf lesen. Schreiben geht nur über die Funktionen
+-- eintrag_hinzufuegen und meilenstein_setzen, und die prüfen das Passwort
+-- auf dem Server.
 
 
 -- 1. Tabelle für die Log-Einträge
@@ -89,5 +90,69 @@ $$;
 revoke all on function public.eintrag_hinzufuegen(text, text, int, text) from public;
 grant execute on function public.eintrag_hinzufuegen(text, text, int, text) to anon, authenticated;
 
--- Supabase die neue Funktion sofort bekannt machen
+-- 4. Meilensteine: gemeinsamer Stand (erledigt oder offen), daraus berechnet
+--    die Seite den Baufortschritt. Schreiben geht nur über die Funktion
+--    meilenstein_setzen, die ebenfalls das Passwort prüft.
+create table if not exists public.meilensteine (
+  schluessel text primary key check (char_length(schluessel) between 1 and 60),
+  fertig     boolean not null default false,
+  von        text check (char_length(von) <= 40),
+  geaendert  timestamptz not null default now()
+);
+
+alter table public.meilensteine enable row level security;
+
+drop policy if exists "alle duerfen lesen" on public.meilensteine;
+create policy "alle duerfen lesen"
+  on public.meilensteine for select
+  to anon, authenticated
+  using (true);
+
+revoke all on public.meilensteine from anon, authenticated;
+grant select on public.meilensteine to anon, authenticated;
+
+create or replace function public.meilenstein_setzen(
+  p_pin        text,
+  p_schluessel text,
+  p_fertig     boolean,
+  p_spieler    text
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_schluessel text := trim(coalesce(p_schluessel, ''));
+  v_spieler    text := trim(coalesce(p_spieler, ''));
+begin
+  if not exists (
+    select 1
+    from public.venator_geheim
+    where pw_hash = encode(sha256(convert_to('venator:' || coalesce(p_pin, ''), 'UTF8')), 'hex')
+  ) then
+    raise exception 'pin_falsch';
+  end if;
+
+  if v_spieler = '' or char_length(v_spieler) > 40 then
+    raise exception 'spieler_ungueltig';
+  end if;
+  if v_schluessel = '' or char_length(v_schluessel) > 60 then
+    raise exception 'meilenstein_ungueltig';
+  end if;
+  if p_fertig is null then
+    raise exception 'meilenstein_ungueltig';
+  end if;
+
+  insert into public.meilensteine (schluessel, fertig, von, geaendert)
+  values (v_schluessel, p_fertig, v_spieler, now())
+  on conflict (schluessel) do update
+    set fertig = excluded.fertig, von = excluded.von, geaendert = excluded.geaendert;
+end;
+$$;
+
+revoke all on function public.meilenstein_setzen(text, text, boolean, text) from public;
+grant execute on function public.meilenstein_setzen(text, text, boolean, text) to anon, authenticated;
+
+-- Supabase die neuen Funktionen sofort bekannt machen
 notify pgrst, 'reload schema';

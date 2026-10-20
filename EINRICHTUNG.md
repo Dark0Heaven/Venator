@@ -40,11 +40,20 @@ Die Dateien `index.html`, `style.css`, `config.js`, `app.js`, `modell.js` und `f
 Fast alles, was ihr ändern wollt, steht in `config.js`:
 
 - **Texte:** Eröffnungstext, Meilensteine, Namen der Besatzung und die Funksprüche.
-- **Zahlen:** Maßstab, Startwert des Fortschritts und, wenn ihr sie kennt, die Länge des Originals für den Rechner.
-- **Meilensteine:** Mit `fertig: true` leuchtet eine Klinge schon beim Laden. Mit `farbe: "#4aa8ff"` bekommt sie eine feste Farbe.
+- **Zahlen:** Maßstab und, wenn ihr sie kennt, die Länge des Originals für den Rechner.
+- **Meilensteine:** Die Liste steht in `config.js`, jeder Eintrag braucht eine eindeutige `id`, die sich später nicht mehr ändert. Mit `farbe: "#4aa8ff"` bekommt eine Klinge eine feste Farbe.
 - **Screenshots:** Bilddateien in den Ordner legen und bei `bilder` eintragen. Solange die Liste leer ist, bleibt der Bereich ausgeblendet.
 
 Die Seite zeigt keinen Nachbau des Schiffs und keine Figuren oder Logos aus den Filmen. Alles Gezeichnete ist selbst gemacht.
+
+## Baufortschritt und Meilensteine
+
+Der Baufortschritt in Prozent wird aus den Meilensteinen berechnet: erledigte geteilt durch alle. Bei 3 von 7 erledigten steht dort 43 %.
+
+- **Abhaken:** Im Abschnitt Meilensteine eine Klinge anklicken, Name und Passwort der Besatzung eingeben und bestätigen. Der Stand liegt im gemeinsamen Speicher, beide sehen dasselbe. Ein zweiter Klick öffnet den Meilenstein wieder.
+- **Speicher:** Dafür gibt es in Supabase die Tabelle `meilensteine` und die Funktion `meilenstein_setzen`. Beide stehen im Skript `supabase-setup.sql` (Abschnitt 4). Wer das Skript schon früher ausgeführt hat, führt es noch einmal aus (mit dem Passwort, das ihr wollt, denn der Passwort-Abschnitt wird dabei neu gesetzt). Die Einträge bleiben erhalten.
+- **Ohne Speicher:** Ist der Speicher nicht verbunden, zählen nur die `fertig: true`-Werte in `config.js`. Klingen lassen sich dann nur für den eigenen Browser zünden.
+- Das Werft-Log ist jetzt für Notizen da und ändert den Fortschritt nicht mehr.
 
 ## 3D-Modell und Innenraum
 

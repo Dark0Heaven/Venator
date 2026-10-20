@@ -5,10 +5,10 @@
    =========================================================== */
 window.VENATOR_CONFIG = {
 
-  // Startwert für den Baufortschritt in Prozent (0 bis 100).
-  // Er gilt nur, solange noch kein Eintrag im Werft-Log steht.
-  // Aktuell ein Platzhalter.
-  fortschritt: 25,
+  // Der Baufortschritt wird aus den Meilensteinen berechnet:
+  // erledigte Meilensteine geteilt durch alle, in Prozent.
+  // Diese Zahl ist nur der Ersatzwert, falls unten keine Meilensteine stehen.
+  fortschritt: 0,
 
   // Maßstab: So viele Meter des Originals entsprechen einem Block.
   // 1:4 bedeutet 4.
@@ -46,17 +46,22 @@ window.VENATOR_CONFIG = {
     schluss: "Möge der Redstone mit euch sein."
   },
 
-  // Meilensteine. Mit fertig: true zeigt die Klinge schon beim Laden an.
-  // Besucher können draufklicken, das gilt nur in ihrem Browser.
+  // Meilensteine. Den Stand (erledigt oder offen) pflegt ihr auf der Seite:
+  // Klinge anklicken, Name und Passwort eingeben, bestätigen. Er wird im
+  // gemeinsamen Speicher abgelegt, alle sehen dasselbe.
+  // id muss pro Meilenstein eindeutig sein und darf sich nicht mehr ändern,
+  // sonst geht der gespeicherte Stand dieses Meilensteins verloren.
+  // fertig: true gilt nur, bis im Speicher ein Stand für die id liegt
+  // (oder wenn der Speicher nicht verbunden ist).
   // Optional: farbe: "#4aa8ff" legt die Klingenfarbe fest.
   meilensteine: [
-    { titel: "Zeichnung und Aufbau", text: "Rumpfform mit Schulter und Heckflügeln festlegen", fertig: false },
-    { titel: "3D-Ansicht", text: "Das Schiff im Browser drehen und prüfen", fertig: false },
-    { titel: "Rohbau im Maßstab 1:4", text: "Der Rumpf steht", fertig: false },
-    { titel: "Rote Hangartore", text: "Oben am Rumpf, wie auf dem Referenzbild", fertig: false },
-    { titel: "Farmen eingebaut", text: "Alle, die platzmäßig hineinpassen", fertig: false },
-    { titel: "Schwebetest", text: "Das Schiff hängt in der Luft über dem Wasser", fertig: false },
-    { titel: "Werftbasis", text: "Kommt erst, wenn das Schiff steht", fertig: false }
+    { id: "zeichnung", titel: "Zeichnung und Aufbau", text: "Rumpfform mit Schulter und Heckflügeln festlegen", fertig: false },
+    { id: "ansicht", titel: "3D-Ansicht", text: "Das Schiff im Browser drehen und prüfen", fertig: false },
+    { id: "rohbau", titel: "Rohbau im Maßstab 1:4", text: "Der Rumpf steht", fertig: false },
+    { id: "hangartore", titel: "Rote Hangartore", text: "Oben am Rumpf, wie auf dem Referenzbild", fertig: false },
+    { id: "farmen", titel: "Farmen eingebaut", text: "Alle, die platzmäßig hineinpassen", fertig: false },
+    { id: "schwebetest", titel: "Schwebetest", text: "Das Schiff hängt in der Luft über dem Wasser", fertig: false },
+    { id: "werftbasis", titel: "Werftbasis", text: "Kommt erst, wenn das Schiff steht", fertig: false }
   ],
 
   // Funksprüche für die Holo-Anzeige bei der Besatzung.

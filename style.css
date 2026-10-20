@@ -1053,3 +1053,17 @@ html[data-zeit="tag"] .bruecke::before {
 .lager .punkt { flex: none; width: 16px; height: 16px; border: 2px solid #000; }
 .schritte { margin: 0 0 12px; padding-left: 22px; }
 .schritte li { margin: 2px 0; }
+
+/* Meilensteine: Zähler und Passwort-Dialog */
+.ms-zaehler { margin: 0 0 14px; font-family: var(--pixel); color: var(--xp); }
+.ms-dialog {
+  width: min(520px, calc(100vw - 32px));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+.ms-dialog::backdrop { background: rgba(0, 0, 0, 0.75); }
+.ms-dialog .log-form { margin: 0; }
+.ms-dialog h3 { margin: 0; font-family: var(--pixel); font-weight: 500; }
+.ms-dialog p { margin: 0; }

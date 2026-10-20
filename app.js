@@ -24,10 +24,21 @@
   }
   const plural = (n, eins, viele) => n + " " + (n === 1 ? eins : viele);
 
+  /* ---------- Meilensteine: gemeinsamer Stand und Prozent ---------- */
+  const MS = { stand: {}, geladen: false };   // stand: id -> { fertig, von, geaendert }
+  const msId = (m) => String(m.id || m.titel);
+  const msFertig = (m) => { const s = MS.stand[msId(m)]; return s ? !!s.fertig : !!m.fertig; };
+  const msListe = () => CFG.meilensteine || [];
+  function msProzent() {
+    const l = msListe();
+    if (!l.length) return klammer(Number(CFG.fortschritt) || 0, 0, 100);
+    return Math.round((100 * l.filter(msFertig).length) / l.length);
+  }
+
   /* ---------- Zustand ---------- */
   const Z = {
     bloecke: Math.max(0, parseInt(lesen("venator-bloecke"), 10) || 0),
-    fortschritt: klammer(Number(CFG.fortschritt) || 0, 0, 100),
+    fortschritt: msProzent(),
     letzter: null,        // neuester Log-Eintrag mit Notiz
     neuester: null,       // neuester Log-Eintrag überhaupt
     ton: lesen("venator-ton") === "an",
@@ -405,7 +416,7 @@
 
   /* ---------- Erfolge ---------- */
   const ERFOLGE = [
-    { id: "zuendung", titel: "Erste Zündung", text: "Zünde einen Meilenstein.", sym: "klinge" },
+    { id: "zuendung", titel: "Erste Zündung", text: "Zünde einen Meilenstein (mit dem Passwort der Besatzung).", sym: "klinge" },
     { id: "hyperraum", titel: "Kleiner Sprung", text: "Spring einmal in den Hyperraum.", sym: "hyper" },
     { id: "bergmann", titel: "Block abgebaut", text: "Baue den schwebenden Block in der Werft ab.", sym: "hammer" },
     { id: "stack", titel: "Ein ganzer Stack", text: "Setze 64 Blöcke.", sym: "block" },
@@ -600,7 +611,8 @@
 
   function krawallText() {
     const p = Z.fortschritt;
-    let t = "Der Bau steht bei " + p + " Prozent.";
+    const l = msListe();
+    let t = "Der Bau steht bei " + p + " Prozent" + (l.length ? " (" + l.filter(msFertig).length + " von " + l.length + " Meilensteinen)" : "") + ".";
     if (Z.letzter && Z.letzter.notiz) {
       t += " Zuletzt gemeldet von " + Z.letzter.spieler + ": „" + Z.letzter.notiz + "“";
     }
@@ -775,7 +787,8 @@
     spieler_ungueltig: "Der Name fehlt oder ist zu lang.",
     prozent_ungueltig: "Prozent muss eine ganze Zahl von 0 bis 100 sein.",
     notiz_zu_lang: "Die Notiz ist länger als 280 Zeichen.",
-    eintrag_leer: "Trag Prozent oder eine Notiz ein."
+    eintrag_leer: "Trag eine Notiz ein.",
+    meilenstein_ungueltig: "Dieser Meilenstein ist ungültig."
   };
 
   function apiKopf() {
@@ -802,9 +815,7 @@
     liste.replaceChildren();
     Z.neuester = daten[0] || null;
     Z.letzter = daten.find((e) => e.notiz) || null;
-    const mitProzent = daten.find((e) => e.prozent !== null && e.prozent !== undefined);
-    if (mitProzent) Fortschritt.setzen(mitProzent.prozent);
-    else krawallAktualisieren();
+    krawallAktualisieren();
 
     if (!daten.length) { status.textContent = "Noch keine Einträge. Schreib den ersten."; return; }
     status.textContent = "";
@@ -820,6 +831,7 @@
   }
 
   async function logLaden() {
+    meilensteineLaden();
     try {
       const res = await fetch(
         apiBasis() + "/rest/v1/eintraege?select=id,created_at,spieler,prozent,notiz&order=id.desc&limit=50",
@@ -855,16 +867,10 @@
       $("log-form").addEventListener("submit", async (ev) => {
         ev.preventDefault();
         const spieler = wahl.value;
-        const prozentRoh = $("f-prozent").value.trim();
         const notiz = $("f-notiz").value.trim();
         const pin = $("f-pin").value;
 
-        let prozent = null;
-        if (prozentRoh !== "") {
-          prozent = Number(prozentRoh);
-          if (!Number.isInteger(prozent) || prozent < 0 || prozent > 100) return formMeldung(MELDUNGEN.prozent_ungueltig, true);
-        }
-        if (prozent === null && !notiz) return formMeldung(MELDUNGEN.eintrag_leer, true);
+        if (!notiz) return formMeldung(MELDUNGEN.eintrag_leer, true);
         if (!pin) return formMeldung("Bitte gib das Passwort ein.", true);
 
         const senden = $("f-senden");
@@ -874,7 +880,7 @@
           const res = await fetch(apiBasis() + "/rest/v1/rpc/eintrag_hinzufuegen", {
             method: "POST",
             headers: Object.assign({ "Content-Type": "application/json" }, apiKopf()),
-            body: JSON.stringify({ p_pin: pin, p_spieler: spieler, p_prozent: prozent, p_notiz: notiz || null })
+            body: JSON.stringify({ p_pin: pin, p_spieler: spieler, p_prozent: null, p_notiz: notiz || null })
           });
           if (!res.ok) {
             let code = "";
@@ -883,7 +889,6 @@
           }
           if ($("f-merken").checked) { schreiben("venator-name", spieler); schreiben("venator-pw", pin); }
           else entfernen("venator-pw");
-          $("f-prozent").value = "";
           $("f-notiz").value = "";
           formMeldung("", false);
           toast("Eintrag gespeichert", spieler, "buch");
@@ -904,10 +909,105 @@
   };
 
   /* ---------- Meilensteine als Klingen ---------- */
+  const MS_KLINGEN = [];   // { m, b, zeigen(fertig, von) }
+
+  function msAnwenden() {
+    MS_KLINGEN.forEach((k) => {
+      const s = MS.stand[msId(k.m)];
+      k.zeigen(msFertig(k.m), s && s.fertig ? s.von : "");
+    });
+    const l = msListe(), n = l.filter(msFertig).length;
+    if (l.length) {
+      $("ms-zaehler").textContent = n + " von " + l.length + " Meilensteinen gezündet. Baufortschritt: " + msProzent() + " %.";
+    }
+    Fortschritt.setzen(msProzent());
+  }
+
+  async function meilensteineLaden() {
+    if (!speicherAktiv || !msListe().length) return;
+    try {
+      const res = await fetch(apiBasis() + "/rest/v1/meilensteine?select=schluessel,fertig,von,geaendert", { headers: apiKopf() });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const daten = await res.json();
+      const stand = {};
+      daten.forEach((r) => { stand[r.schluessel] = { fertig: !!r.fertig, von: r.von || "", geaendert: r.geaendert }; });
+      MS.stand = stand;
+      MS.geladen = true;
+      msAnwenden();
+    } catch (e) { /* alter Stand bleibt sichtbar */ }
+  }
+
+  function msDialogOeffnen(k) {
+    const dlg = $("ms-dialog");
+    const neu = k.b.getAttribute("aria-pressed") !== "true";
+    $("ms-titel").textContent = neu ? "Meilenstein zünden" : "Meilenstein wieder öffnen";
+    $("ms-text").textContent = (neu ? "„" + k.m.titel + "“ als erledigt markieren?" : "„" + k.m.titel + "“ wieder auf offen setzen?") + " Alle sehen die Änderung.";
+    $("ms-meldung").textContent = ""; $("ms-meldung").classList.remove("fehler");
+    const wahl = $("ms-spieler");
+    wahl.replaceChildren();
+    (CFG.spieler || []).forEach((p) => { const o = el("option", "", p.name); o.value = p.name; wahl.append(o); });
+    const n = lesen("venator-name"); if (n) wahl.value = n;
+    const p = lesen("venator-pw");
+    $("ms-pin").value = p || "";
+    $("ms-merken").checked = !!p;
+    dlg._k = k; dlg._neu = neu;
+    if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
+    $("ms-pin").focus();
+  }
+
+  function msDialogInit() {
+    const dlg = $("ms-dialog"), form = $("ms-form");
+    const zu = () => { if (typeof dlg.close === "function") dlg.close(); else dlg.removeAttribute("open"); };
+    $("ms-abbruch").addEventListener("click", zu);
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const k = dlg._k, neu = dlg._neu, pin = $("ms-pin").value, spieler = $("ms-spieler").value;
+      const meld = (t, fehler) => { const m = $("ms-meldung"); m.textContent = t; m.classList.toggle("fehler", !!fehler); };
+      if (!pin) return meld("Bitte gib das Passwort ein.", true);
+      const ok = $("ms-ok");
+      ok.disabled = true; meld("Speichere ...", false);
+      try {
+        const res = await fetch(apiBasis() + "/rest/v1/rpc/meilenstein_setzen", {
+          method: "POST",
+          headers: Object.assign({ "Content-Type": "application/json" }, apiKopf()),
+          body: JSON.stringify({ p_pin: pin, p_schluessel: msId(k.m), p_fertig: neu, p_spieler: spieler })
+        });
+        if (!res.ok) {
+          let code = "";
+          try { code = (await res.json()).message || ""; } catch (e) {}
+          return meld(MELDUNGEN[code] || "Das hat nicht geklappt (Fehler " + res.status + ").", true);
+        }
+        if ($("ms-merken").checked) { schreiben("venator-name", spieler); schreiben("venator-pw", pin); }
+        else entfernen("venator-pw");
+        MS.stand[msId(k.m)] = { fertig: neu, von: spieler, geaendert: new Date().toISOString() };
+        zu();
+        msAnwenden();
+        Ton.saber(neu);
+        if (neu) {
+          toast("Meilenstein gezündet", k.m.titel, "klinge");
+          freischalten("zuendung");
+          const r = k.b.getBoundingClientRect();
+          Fx.xp(r.left + r.width / 2, r.top + r.height / 2, 6);
+        } else toast("Meilenstein wieder offen", k.m.titel, "klinge");
+        meilensteineLaden();
+      } catch (e) {
+        meld("Keine Verbindung zum Speicher.", true);
+      } finally {
+        ok.disabled = false;
+      }
+    });
+  }
+
   function meilensteineBauen() {
     const farben = ["#4aa8ff", "#4cff7a", "#ff5a4a", "#ffd84a", "#b36bff", "#ffffff"];
     const liste = $("adv-liste");
-    (CFG.meilensteine || []).forEach((m, i) => {
+    if (speicherAktiv) {
+      $("ms-hinweis").textContent = "Klick auf eine Klinge, um einen Meilenstein zu zünden oder wieder zu öffnen. Dafür brauchst du das Passwort der Besatzung. Der Baufortschritt wird daraus berechnet.";
+      msDialogInit();
+    } else {
+      $("ms-hinweis").textContent = "Der gemeinsame Speicher ist nicht verbunden. Du kannst Klingen nur für dich zünden, der Baufortschritt ändert sich dadurch nicht.";
+    }
+    msListe().forEach((m, i) => {
       const b = el("button", "klinge");
       b.type = "button";
       b.style.setProperty("--k", m.farbe || farben[i % farben.length]);
@@ -919,15 +1019,18 @@
       bahn.append(el("span", "griff"), el("span", "schneide"));
       b.append(kopf, el("span", "klinge-text", m.text || ""), bahn);
 
-      const zeigen = (fertig) => {
+      const zeigen = (fertig, von) => {
         b.setAttribute("aria-pressed", fertig ? "true" : "false");
-        status.textContent = fertig ? "Gezündet" : "Offen";
+        status.textContent = fertig ? "Gezündet" + (von ? " · " + von : "") : "Offen";
       };
-      zeigen(!!m.fertig);
+      zeigen(msFertig(m), "");
+      const k = { m, b, zeigen };
+      MS_KLINGEN.push(k);
 
       b.addEventListener("click", () => {
+        if (speicherAktiv) return msDialogOeffnen(k);
         const neu = b.getAttribute("aria-pressed") !== "true";
-        zeigen(neu);
+        zeigen(neu, "");
         Ton.saber(neu);
         if (neu) {
           toast("Meilenstein gezündet", m.titel, "klinge");
@@ -938,6 +1041,7 @@
       });
       liste.append(b);
     });
+    msAnwenden();
   }
 
   /* ---------- Besatzung und Holo-Funk ---------- */
@@ -1137,7 +1241,7 @@
           break;
         }
         case "fortschritt": case "progress":
-          this.zeile("Baufortschritt: " + Z.fortschritt + " Prozent.");
+          this.zeile("Baufortschritt: " + Z.fortschritt + " Prozent (" + msListe().filter(msFertig).length + " von " + msListe().length + " Meilensteinen).");
           if (Z.neuester) {
             this.zeile("Letzter Eintrag: " + Z.neuester.spieler + (zeitText(Z.neuester.created_at) ? " (" + zeitText(Z.neuester.created_at) + ")" : "") +
               (Z.neuester.notiz ? ": " + Z.neuester.notiz : "."));
