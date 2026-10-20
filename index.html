@@ -39,7 +39,7 @@
   <div class="ende">
     <div class="titel-gross" aria-hidden="true">Venator</div>
     <p class="untertitel">Ein Sternenzerstörer in Minecraft. Zwei Spieler, eine Survival-Welt, Maßstab 1:4.</p>
-    <p class="tipp"><span class="nur-tastatur">Tipp: Mit den Zifferntasten 1 bis 9 fliegst du durch die Seite. H springt in den Hyperraum, M schaltet den Ton.</span><span class="nur-touch">Tipp: Unten findest du die Schnellleiste.</span></p>
+    <p class="tipp"><span class="nur-tastatur">Tipp: Die Zifferntasten 1 bis 9 öffnen die Seiten, 0 zeigt alles auf einer langen Seite. H springt in den Hyperraum, M schaltet den Ton.</span><span class="nur-touch">Tipp: Unten in der Schnellleiste öffnet jedes Symbol eine eigene Seite.</span></p>
     <details class="text-lesen" id="text-lesen">
       <summary class="knopf">Eröffnungstext lesen</summary>
       <div class="krawall-flach" id="krawall-flach"></div>
@@ -135,20 +135,41 @@
     <h2 id="h-innenraum" tabindex="-1">Innenraum</h2>
     <p class="hinweis">Ein Beispiel, wie der Rumpf von innen aussehen könnte: sechs Räume mit Farmen. Die Zeiten sind stark verkürzt, die Anlagen vereinfacht.</p>
 
+    <div class="innen-tabs" id="innen-tabs" role="tablist" aria-label="Ansicht des Innenraums" hidden>
+      <button class="knopf klein" id="tab-3d" role="tab" type="button" aria-controls="panel-3d" aria-selected="true">3D-Querschnitt</button>
+      <button class="knopf klein" id="tab-2d" role="tab" type="button" aria-controls="panel-2d" aria-selected="false" tabindex="-1">Animation (2D)</button>
+    </div>
+
     <div class="sim-gitter">
-      <div class="sim-buehne" id="sim-buehne">
-        <canvas id="sim-canvas" width="480" height="300" role="img" aria-label="Querschnitt durch das Schiff mit sechs Räumen: Getreidefarm, Zuckerrohrfarm, Seetangfarm, Monsterfarm, Eisenfarm und Lagerhalle. Die Auswahlliste daneben beschreibt jeden Raum."></canvas>
-        <div class="sim-namen" id="sim-namen" aria-hidden="true"></div>
-        <p class="sim-status" id="sim-status" role="status"></p>
+      <div class="sim-links">
+        <div id="panel-3d" role="tabpanel" aria-labelledby="tab-3d" hidden>
+          <div class="modell-buehne" id="i3d-buehne">
+            <canvas id="i3d-canvas" tabindex="0" aria-label="3D-Querschnitt durch den Innenraum mit sechs Räumen. Pfeiltasten drehen, Plus und Minus zoomen, Escape wählt ab. Die Raumliste unter dem Bild ist die Alternative zum Anklicken."></canvas>
+            <div class="pins" id="i3d-pins" aria-hidden="true"></div>
+            <div class="modell-tip" id="i3d-tip" hidden></div>
+            <p class="modell-status" id="i3d-status" role="status">Innenraum wird gebaut …</p>
+            <p class="modell-hinweis" id="i3d-hinweis" hidden>Klick ins Bild, dann zoomt das Mausrad.</p>
+          </div>
+          <div class="modell-werkzeuge" id="i3d-werkzeuge" role="group" aria-label="Ansicht des 3D-Querschnitts"></div>
+        </div>
+
+        <div id="panel-2d" role="tabpanel" aria-labelledby="tab-2d">
+          <div class="sim-buehne" id="sim-buehne">
+            <canvas id="sim-canvas" width="480" height="300" role="img" aria-label="Querschnitt durch das Schiff mit sechs Räumen: Getreidefarm, Zuckerrohrfarm, Seetangfarm, Monsterfarm, Eisenfarm und Lagerhalle. Die Auswahlliste daneben beschreibt jeden Raum."></canvas>
+            <div class="sim-namen" id="sim-namen" aria-hidden="true"></div>
+            <p class="sim-status" id="sim-status" role="status"></p>
+          </div>
+          <div class="sim-steuerung" id="sim-steuerung" role="group" aria-label="Simulation"></div>
+        </div>
       </div>
 
       <aside class="teil-info" id="sim-info" aria-live="polite" aria-labelledby="si-titel"></aside>
     </div>
 
-    <div class="sim-steuerung" id="sim-steuerung" role="group" aria-label="Simulation"></div>
-
-    <h3 class="unter">Lager</h3>
-    <ul class="lager" id="lager" aria-label="Menge pro Gegenstand"></ul>
+    <div id="lager-box">
+      <h3 class="unter">Lager</h3>
+      <ul class="lager" id="lager" aria-label="Menge pro Gegenstand"></ul>
+    </div>
 
     <h3 class="unter">Räume</h3>
     <ul class="teile-liste" id="sim-liste"></ul>
@@ -279,5 +300,6 @@
 <script src="app.js"></script>
 <script src="modell.js"></script>
 <script src="farmen.js"></script>
+<script src="innen3d.js"></script>
 </body>
 </html>

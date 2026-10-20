@@ -566,8 +566,15 @@
     if (idx < 0 || idx >= RAEUME.length) return;
     SIM.auswahl = idx;
     infoZeigen(idx); markieren();
+    document.dispatchEvent(new CustomEvent("venator:raum", { detail: { i: idx, id: FARMEN[idx] && FARMEN[idx].id } }));
     SIM.gesehen.add(idx);
     if (SIM.gesehen.size >= Math.min(RAEUME.length, FARMEN.length)) freischalten("inspektor");
+    if (!SIM.laeuft || !SIM.sichtbar) zeichnen();
+  }
+  function abwaehlen() {
+    SIM.auswahl = -1;
+    infoZeigen(-1); markieren();
+    document.dispatchEvent(new CustomEvent("venator:raum", { detail: { i: -1, id: null } }));
     if (!SIM.laeuft || !SIM.sichtbar) zeichnen();
   }
   function finden(q) {
@@ -577,7 +584,7 @@
     const t = alle.find((x) => x.id === n) || alle.find((x) => x.ti === n) || alle.find((x) => x.id.startsWith(n) || x.ti.startsWith(n)) || alle.find((x) => x.id.includes(n) || x.ti.includes(n));
     return t ? t.f : null;
   }
-  window.VenatorFarmen = { namen: () => FARMEN.map((f) => f.id), finden, waehlen, zustand: SIM };
+  window.VenatorFarmen = { namen: () => FARMEN.map((f) => f.id), finden, waehlen, abwaehlen, zustand: SIM };
 
   /* ---------- Steuerung ---------- */
   function steuerungBauen() {

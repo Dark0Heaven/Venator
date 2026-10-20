@@ -68,6 +68,7 @@
     block:  ["gggggggg", "gddgggdg", "gggdgggg", "gdgggddg", "gggggdgg", "gdggggdg", "ggdggggg", "gggggggg"],
     schloss:["..dddd..", ".d....d.", ".d....d.", "dddddddd", "dkkkkkkd", "dkkddkkd", "dkkddkkd", "dddddddd"],
     wuerfel:["..cccccc", ".cc....c", "cccccc.c", "c....c.c", "c....c.c", "c....c.c", "c....cc.", "cccccc.."],
+    alles:  ["wwwwwwww", "........", "wwwwwwww", "........", "wwwwwwww", "........", ".cccccc.", "..cccc.."],
     ernte:  ["...e.e..", "..eeeee.", "...eee..", "....e...", "....e...", "nnnnnnnn", "nnknnknn", "nnnnnnnn"]
   };
   function icon(name) {
@@ -424,7 +425,8 @@
     { id: "kommando", titel: "Kommandozeile", text: "Führe einen Befehl im Bordterminal aus.", sym: "term" },
     { id: "klinge", titel: "Klingenfarbe", text: "Ändere die Farbe aller Klingen.", sym: "stern" },
     { id: "tagnacht", titel: "Tag und Nacht", text: "Lass es im Weltraum Tag werden.", sym: "stern" },
-    { id: "weitgereist", titel: "Weit gereist", text: "Scrolle bis ganz nach unten.", sym: "buch" },
+    { id: "weitgereist", titel: "Weit gereist", text: "Besuche alle neun Seiten der Schnellleiste.", sym: "buch" },
+    { id: "alleseite", titel: "Großer Überblick", text: "Öffne die Seite „Alles“.", sym: "alles" },
     { id: "bauplan", titel: "Bauplan studiert", text: "Sieh dir sechs Teile des Schiffs im Modell an.", sym: "wuerfel" },
     { id: "rundflug", titel: "Rundflug", text: "Dreh das Modell einmal rundherum.", sym: "hyper" },
     { id: "inspektor", titel: "Chef-Ingenieur", text: "Schau dir alle Räume im Innenraum an.", sym: "ernte" },
@@ -485,16 +487,66 @@
     { name: "Meilensteine", icon: "klinge", ziel: "meilensteine" },
     { name: "Besatzung", icon: "kopf", ziel: "besatzung" },
     { name: "Bordterminal", icon: "term", ziel: "terminal" },
-    { name: "Erfolge", icon: "pokal", ziel: "erfolge" }
+    { name: "Erfolge", icon: "pokal", ziel: "erfolge" },
+    { name: "Alles", icon: "alles", ziel: "alles" }
   ];
+  const slotTaste = (i) => String((i + 1) % 10);   // 1 bis 9, danach 0
 
-  function springe(id) {
-    const n = $(id);
-    if (!n) return;
-    n.scrollIntoView({ block: "start" });
-    const h = n.querySelector("h2");
-    if (h) h.focus({ preventScroll: true });
-  }
+  /* ---------- Seiten: jeder Slot ist eine eigene Seite, "Alles" ist die lange Scroll-Seite ---------- */
+  const ALLES = "alles";
+  const SEITEN_TEILE = {
+    bruecke: ["bruecke"], werft: ["werft", "galerie-bereich"], modell: ["modell"], innenraum: ["innenraum"],
+    "log-bereich": ["log-bereich"], meilensteine: ["meilensteine"], besatzung: ["besatzung"], terminal: ["terminal"],
+    erfolge: ["erfolge"]
+  };
+  const Seiten = {
+    aktuell: "bruecke",
+    gueltig(id) { return id === ALLES || Object.prototype.hasOwnProperty.call(SEITEN_TEILE, id); },
+    aus(hash) { const id = String(hash || "").replace(/^#/, ""); return this.gueltig(id) ? id : null; },
+    titel(id) { const s = SLOTS.find((x) => x.ziel === id); return s ? s.name : "Venator Werft"; },
+    zeige(id, opt) {
+      opt = opt || {};
+      if (!this.gueltig(id)) return false;
+      const gleich = id === this.aktuell && !opt.erzwingen;
+      this.aktuell = id;
+      const root = document.documentElement;
+      root.classList.add("seiten");
+      root.dataset.seite = id;
+      const sichtbar = id === ALLES ? null : SEITEN_TEILE[id];
+      document.querySelectorAll("header.bruecke, main > .abschnitt").forEach((n) => {
+        n.classList.toggle("seite-aus", !!sichtbar && sichtbar.indexOf(n.id) < 0);
+      });
+      Hud.aktiv(id);
+      document.title = (id === "bruecke" ? "" : this.titel(id) + " – ") + "Venator Werft";
+      if (!opt.leise && !gleich) {
+        if (opt.verlauf !== false) {
+          try {
+            if (location.hash !== "#" + id) history.pushState({ seite: id }, "", "#" + id);
+          } catch (e) { /* file:// oder gesperrter Verlauf */ }
+        }
+        window.scrollTo(0, 0);
+        if (!reduce) Sterne.scrollV += 90;
+        if (id === ALLES) freischalten("alleseite");
+        else if (SEITEN_TEILE[id]) {
+          const n = $(id), h = n && (n.querySelector("h2") || n.querySelector("h1"));
+          if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
+        }
+        Seiten.besucht.add(id);
+        if (SLOTS.every((x) => x.ziel === ALLES || Seiten.besucht.has(x.ziel))) freischalten("weitgereist");
+      }
+      return true;
+    },
+    besucht: new Set(),
+    init() {
+      const start = this.aus(location.hash) || "bruecke";
+      this.zeige(start, { leise: true, erzwingen: true });
+      this.besucht.add(start);
+      window.addEventListener("popstate", () => this.zeige(this.aus(location.hash) || "bruecke", { verlauf: false, erzwingen: true }));
+      window.addEventListener("hashchange", () => { const id = this.aus(location.hash); if (id && id !== this.aktuell) this.zeige(id, { verlauf: false }); });
+    }
+  };
+
+  function springe(id) { return Seiten.zeige(id); }
 
   const Hud = {
     knoepfe: [], tonKnopf: null,
@@ -504,10 +556,10 @@
         const b = el("button", "slot");
         b.type = "button";
         b.dataset.tip = s.name;
-        b.setAttribute("aria-label", s.name + " (Taste " + (i + 1) + ")");
-        b.setAttribute("aria-keyshortcuts", String(i + 1));
+        b.setAttribute("aria-label", s.name + " (Taste " + slotTaste(i) + ")");
+        b.setAttribute("aria-keyshortcuts", slotTaste(i));
         b.dataset.ziel = s.ziel;
-        const nr = el("span", "slot-nr", String(i + 1));
+        const nr = el("span", "slot-nr", slotTaste(i));
         nr.setAttribute("aria-hidden", "true");
         b.append(icon(s.icon), nr);
         b.addEventListener("click", () => this.waehlen(i));
@@ -533,23 +585,6 @@
       mk("Hyperraum-Sprung", "H", "hyper", () => Hyper.sprung());
       this.tonKnopf = mk("Ton", "M", "tonaus", () => this.tonUmschalten());
       this.tonAnzeige();
-
-      if ("IntersectionObserver" in window) {
-        const io = new IntersectionObserver((eintraege) => {
-          eintraege.forEach((e) => { if (e.isIntersecting) this.aktiv(e.target.id); });
-        }, { rootMargin: "-45% 0px -50% 0px" });
-        SLOTS.forEach((s) => { const n = $(s.ziel); if (n) io.observe(n); });
-      }
-      let wartet = false;
-      window.addEventListener("scroll", () => {
-        if (wartet) return;
-        wartet = true;
-        setTimeout(() => {
-          wartet = false;
-          const de = document.documentElement;
-          if (window.innerHeight + window.scrollY >= de.scrollHeight - 60) freischalten("weitgereist");
-        }, 200);
-      }, { passive: true });
     },
     aktiv(id) {
       Z.abschnitt = id;
@@ -560,7 +595,7 @@
     },
     waehlen(i) {
       const s = SLOTS[i];
-      if (s) springe(s.ziel);
+      if (s) Seiten.zeige(s.ziel);
     },
     tonUmschalten(an) {
       Z.ton = an === undefined ? !Z.ton : !!an;
@@ -1104,7 +1139,7 @@
   };
 
   /* ---------- Bordterminal ---------- */
-  const TP = { bruecke: "bruecke", werft: "werft", modell: "modell", innenraum: "innenraum", farmen: "innenraum", log: "log-bereich", meilensteine: "meilensteine", besatzung: "besatzung", terminal: "terminal", erfolge: "erfolge" };
+  const TP = { alles: "alles", bruecke: "bruecke", werft: "werft", modell: "modell", innenraum: "innenraum", farmen: "innenraum", log: "log-bereich", meilensteine: "meilensteine", besatzung: "besatzung", terminal: "terminal", erfolge: "erfolge" };
   const KLINGEN = {
     blau: "#4aa8ff", blue: "#4aa8ff", gruen: "#4cff7a", green: "#4cff7a", rot: "#ff4a3d", red: "#ff4a3d",
     violett: "#b36bff", lila: "#b36bff", purple: "#b36bff", gelb: "#ffd84a", yellow: "#ffd84a", weiss: "#ffffff", white: "#ffffff"
@@ -1344,7 +1379,7 @@
       const tippt = ziel && ziel.closest && ziel.closest("input, textarea, select, [contenteditable]");
       if (tippt || e.ctrlKey || e.metaKey || e.altKey) return;
       const k = String(e.key).toLowerCase();
-      if (/^[1-9]$/.test(k)) { Hud.waehlen(Number(k) - 1); konamiPos = 0; return; }
+      if (/^[0-9]$/.test(k)) { Hud.waehlen(k === "0" ? 9 : Number(k) - 1); konamiPos = 0; return; }
       if (k === "h") { Hyper.sprung(); konamiPos = 0; return; }
       if (k === "m") { Hud.tonUmschalten(); konamiPos = 0; return; }
       if (k === KONAMI[konamiPos]) {
@@ -1404,11 +1439,12 @@
     erfolgeZeigen();
     krawallBauen();
     Film.init();
+    Seiten.init();
+    if (Seiten.aktuell !== "bruecke") Film.ende();
     galerieBauen();
     tastaturStarten();
     $("f3-knopf").addEventListener("click", () => F3.umschalten());
     document.documentElement.dataset.zeit = "nacht";
-    Hud.aktiv("bruecke");
   }
 
   start();
